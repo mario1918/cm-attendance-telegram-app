@@ -1,4 +1,5 @@
 """Admin features — register/remove teachers, download attendance reports."""
+import warnings
 from datetime import date
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -42,22 +43,22 @@ async def download_report_start(update: Update, context: ContextTypes.DEFAULT_TY
 
     teacher = context.user_data.get("teacher")
     if not teacher or not teacher["is_admin"]:
-        await query.edit_message_text("⛔ Admin access required.")
+        await query.edit_message_text("⛔ مطلوب صلاحيات المشرف.")
         return ConversationHandler.END
 
     teachers = await db.get_all_teachers()
     if not teachers:
-        await query.edit_message_text("No teachers found.", reply_markup=admin_menu_keyboard())
+        await query.edit_message_text("لا يوجد معلمون.", reply_markup=admin_menu_keyboard())
         return ConversationHandler.END
 
     buttons = [
         [InlineKeyboardButton(t["name"], callback_data=f"rptteacher_{t['id']}")]
         for t in teachers
     ]
-    buttons.append([InlineKeyboardButton("🔙 Cancel", callback_data=CB_MAIN_MENU)])
+    buttons.append([InlineKeyboardButton("🔙 إلغاء", callback_data=CB_MAIN_MENU)])
 
     await query.edit_message_text(
-        "📊 Download Report\n\nSelect the teacher's class:",
+        "📊 تحميل التقرير\n\nاختر صف المعلم:",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
     return STATE_SELECT_TEACHER_FOR_REPORT
@@ -88,10 +89,10 @@ async def report_teacher_selected(update: Update, context: ContextTypes.DEFAULT_
         [InlineKeyboardButton(label, callback_data=f"rptmonth_{y}_{m}")]
         for y, m, label in months
     ]
-    buttons.append([InlineKeyboardButton("🔙 Cancel", callback_data=CB_MAIN_MENU)])
+    buttons.append([InlineKeyboardButton("🔙 إلغاء", callback_data=CB_MAIN_MENU)])
 
     await query.edit_message_text(
-        "Select the month for the report:",
+        "اختر الشهر للتقرير:",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
     return STATE_SELECT_MONTH_FOR_REPORT
@@ -107,10 +108,10 @@ async def report_month_selected(update: Update, context: ContextTypes.DEFAULT_TY
     teacher_id = context.user_data.get("report_teacher_id")
 
     if not teacher_id:
-        await query.edit_message_text("Error: teacher data lost.", reply_markup=admin_menu_keyboard())
+        await query.edit_message_text("خطأ: فُقدت بيانات المعلم.", reply_markup=admin_menu_keyboard())
         return ConversationHandler.END
 
-    await query.edit_message_text("⏳ Generating report, please wait...")
+    await query.edit_message_text("⏳ جاري إنشاء التقرير، يرجى الانتظار...")
 
     import calendar
     month_name = calendar.month_name[month]
@@ -120,7 +121,7 @@ async def report_month_selected(update: Update, context: ContextTypes.DEFAULT_TY
     teacher_name = target_teacher["name"] if target_teacher else "Unknown"
 
     buffer = await generate_attendance_report(teacher_id, year, month)
-    filename = f"Attendance_{teacher_name}_{month_name}_{year}.xlsx"
+    filename = f"حضور_{teacher_name}_{month_name}_{year}.xlsx"
 
     teacher = context.user_data.get("teacher")
     is_admin = bool(teacher["is_admin"]) if teacher else False
@@ -128,10 +129,10 @@ async def report_month_selected(update: Update, context: ContextTypes.DEFAULT_TY
     await query.message.reply_document(
         document=buffer,
         filename=filename,
-        caption=f"📊 Attendance report for {teacher_name} — {month_name} {year}",
+        caption=f"📊 تقرير الحضور لـ {teacher_name} — {month_name} {year}",
     )
     await query.message.reply_text(
-        "Report sent! Choose an option:",
+        "تم إرسال التقرير! اختر من الخيارات:",
         reply_markup=main_menu_keyboard(is_admin),
     )
 
@@ -155,7 +156,7 @@ def download_report_conversation() -> ConversationHandler:
             CommandHandler("cancel", cancel_handler),
             CallbackQueryHandler(cancel_handler, pattern=f"^{CB_MAIN_MENU}$"),
         ],
-        per_message=False,
+        per_message=True,
     )
 
 
@@ -168,11 +169,11 @@ async def register_teacher_start(update: Update, context: ContextTypes.DEFAULT_T
 
     teacher = context.user_data.get("teacher")
     if not teacher or not teacher["is_admin"]:
-        await query.edit_message_text("⛔ Admin access required.")
+        await query.edit_message_text("⛔ مطلوب صلاحيات المشرف.")
         return ConversationHandler.END
 
     await query.edit_message_text(
-        "➕ Register Teacher\n\nType the new teacher's name (or /cancel):"
+        "➕ تسجيل معلم\n\nاكتب اسم المعلم الجديد (أو /cancel للعودة):"
     )
     return STATE_WAITING_TEACHER_NAME
 
@@ -181,14 +182,14 @@ async def register_teacher_name_received(update: Update, context: ContextTypes.D
     """Save name and ask for Telegram user ID."""
     name = update.message.text.strip()
     if not name:
-        await update.message.reply_text("Name cannot be empty. Please type a valid name:")
+        await update.message.reply_text("الاسم لا يمكن أن يكون فارغاً. اكتب اسماً صحيحاً:")
         return STATE_WAITING_TEACHER_NAME
 
     context.user_data["new_teacher_name"] = name
     await update.message.reply_text(
-        f"Teacher name: {name}\n\n"
-        "Now type the teacher's Telegram user ID (a number).\n"
-        "The teacher can find their ID by messaging @userinfobot on Telegram."
+        f"اسم المعلم: {name}\n\n"
+        "الآن اكتب معرّف تيليجرام للمعلم (رقم).\n"
+        "يمكن للمعلم معرفة معرّفه بمراسلة @userinfobot على تيليجرام."
     )
     return STATE_WAITING_TEACHER_ID
 
@@ -199,14 +200,14 @@ async def register_teacher_id_received(update: Update, context: ContextTypes.DEF
     try:
         telegram_id = int(text)
     except ValueError:
-        await update.message.reply_text("Please enter a valid number for the Telegram user ID:")
+        await update.message.reply_text("يرجى إدخال رقم صحيح لمعرّف تيليجرام:")
         return STATE_WAITING_TEACHER_ID
 
     # Check if already registered
     existing = await db.get_teacher_by_telegram_id(telegram_id)
     if existing:
         await update.message.reply_text(
-            f"A teacher with Telegram ID {telegram_id} is already registered as '{existing['name']}'.",
+            f"المعلم بمعرّف تيليجرام {telegram_id} مسجّل مسبقاً باسم '{existing['name']}'.",
             reply_markup=admin_menu_keyboard(),
         )
         return ConversationHandler.END
@@ -215,12 +216,12 @@ async def register_teacher_id_received(update: Update, context: ContextTypes.DEF
 
     buttons = [
         [
-            InlineKeyboardButton("Yes", callback_data="admin_yes"),
-            InlineKeyboardButton("No", callback_data="admin_no"),
+            InlineKeyboardButton("نعم", callback_data="admin_yes"),
+            InlineKeyboardButton("لا", callback_data="admin_no"),
         ]
     ]
     await update.message.reply_text(
-        "Should this teacher have admin privileges?",
+        "هل يجب أن يكون لهذا المعلم صلاحيات مشرف?",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
     return STATE_WAITING_TEACHER_ADMIN
@@ -236,9 +237,9 @@ async def register_teacher_admin_selected(update: Update, context: ContextTypes.
     telegram_id = context.user_data.pop("new_teacher_telegram_id", 0)
 
     await db.add_teacher(telegram_id, name, is_admin)
-    role = "admin teacher" if is_admin else "teacher"
+    role = "معلم مشرف" if is_admin else "معلم"
     await query.edit_message_text(
-        f"✅ {name} registered as {role} (Telegram ID: {telegram_id}).",
+        f"✅ تم تسجيل {name} ك{role} (معرّف تيليجرام: {telegram_id}).",
         reply_markup=admin_menu_keyboard(),
     )
     return ConversationHandler.END
@@ -246,25 +247,27 @@ async def register_teacher_admin_selected(update: Update, context: ContextTypes.
 
 def register_teacher_conversation() -> ConversationHandler:
     """Build ConversationHandler for registering a teacher."""
-    return ConversationHandler(
-        entry_points=[CallbackQueryHandler(register_teacher_start, pattern=f"^{CB_REGISTER_TEACHER}$")],
-        states={
-            STATE_WAITING_TEACHER_NAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, register_teacher_name_received),
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*per_message.*", category=UserWarning)
+        return ConversationHandler(
+            entry_points=[CallbackQueryHandler(register_teacher_start, pattern=f"^{CB_REGISTER_TEACHER}$")],
+            states={
+                STATE_WAITING_TEACHER_NAME: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, register_teacher_name_received),
+                ],
+                STATE_WAITING_TEACHER_ID: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, register_teacher_id_received),
+                ],
+                STATE_WAITING_TEACHER_ADMIN: [
+                    CallbackQueryHandler(register_teacher_admin_selected, pattern=r"^admin_(yes|no)$"),
+                ],
+            },
+            fallbacks=[
+                CommandHandler("cancel", cancel_handler),
+                CallbackQueryHandler(cancel_handler, pattern=f"^{CB_MAIN_MENU}$"),
             ],
-            STATE_WAITING_TEACHER_ID: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, register_teacher_id_received),
-            ],
-            STATE_WAITING_TEACHER_ADMIN: [
-                CallbackQueryHandler(register_teacher_admin_selected, pattern=r"^admin_(yes|no)$"),
-            ],
-        },
-        fallbacks=[
-            CommandHandler("cancel", cancel_handler),
-            CallbackQueryHandler(cancel_handler, pattern=f"^{CB_MAIN_MENU}$"),
-        ],
-        per_message=False,
-    )
+            per_message=False,
+        )
 
 
 # ── Remove Teacher ───────────────────────────────────────────────────────────
@@ -276,7 +279,7 @@ async def remove_teacher_start(update: Update, context: ContextTypes.DEFAULT_TYP
 
     teacher = context.user_data.get("teacher")
     if not teacher or not teacher["is_admin"]:
-        await query.edit_message_text("⛔ Admin access required.")
+        await query.edit_message_text("⛔ مطلوب صلاحيات المشرف.")
         return ConversationHandler.END
 
     teachers = await db.get_all_teachers()
@@ -285,19 +288,19 @@ async def remove_teacher_start(update: Update, context: ContextTypes.DEFAULT_TYP
 
     if not other_teachers:
         await query.edit_message_text(
-            "No other teachers to remove.",
+            "لا يوجد معلمون آخرون لحذفهم.",
             reply_markup=admin_menu_keyboard(),
         )
         return ConversationHandler.END
 
     buttons = [
-        [InlineKeyboardButton(f"{t['name']} {'(admin)' if t['is_admin'] else ''}", callback_data=f"rmtsel_{t['id']}")]
+        [InlineKeyboardButton(f"{t['name']} {'(مشرف)' if t['is_admin'] else ''}", callback_data=f"rmtsel_{t['id']}")]
         for t in other_teachers
     ]
-    buttons.append([InlineKeyboardButton("🔙 Cancel", callback_data=CB_MAIN_MENU)])
+    buttons.append([InlineKeyboardButton("🔙 إلغاء", callback_data=CB_MAIN_MENU)])
 
     await query.edit_message_text(
-        "❌ Remove Teacher\n\nSelect the teacher to remove:",
+        "❌ حذف معلم\n\nاختر المعلم المراد حذفه:",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
     return STATE_SELECT_TEACHER_TO_REMOVE
@@ -313,20 +316,20 @@ async def remove_teacher_selected(update: Update, context: ContextTypes.DEFAULT_
     target = next((t for t in teachers if t["id"] == teacher_id), None)
 
     if not target:
-        await query.edit_message_text("Teacher not found.", reply_markup=admin_menu_keyboard())
+        await query.edit_message_text("المعلم غير موجود.", reply_markup=admin_menu_keyboard())
         return ConversationHandler.END
 
     context.user_data["pending_remove_teacher"] = target
 
     buttons = [
         [
-            InlineKeyboardButton("✅ Yes, remove", callback_data=CB_CONFIRM_YES),
-            InlineKeyboardButton("❌ No, cancel", callback_data=CB_CONFIRM_NO),
+            InlineKeyboardButton("✅ نعم، احذف", callback_data=CB_CONFIRM_YES),
+            InlineKeyboardButton("❌ لا، إلغاء", callback_data=CB_CONFIRM_NO),
         ]
     ]
     await query.edit_message_text(
-        f"Are you sure you want to remove teacher '{target['name']}'?\n"
-        "This will also delete all their students and attendance records.",
+        f"هل أنت متأكد من حذف المعلم '{target['name']}'?\n"
+        "سيتم أيضاً حذف جميع طلابه وسجلات حضورهم.",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
     return STATE_CONFIRM_REMOVE_TEACHER
@@ -342,15 +345,15 @@ async def remove_teacher_confirmed(update: Update, context: ContextTypes.DEFAULT
         if target:
             await db.remove_teacher(target["id"])
             await query.edit_message_text(
-                f"✅ Teacher '{target['name']}' has been removed.",
+                f"✅ تم حذف المعلم '{target['name']}'.",
                 reply_markup=admin_menu_keyboard(),
             )
         else:
-            await query.edit_message_text("Error: teacher data lost.", reply_markup=admin_menu_keyboard())
+            await query.edit_message_text("خطأ: فُقدت بيانات المعلم.", reply_markup=admin_menu_keyboard())
     else:
         context.user_data.pop("pending_remove_teacher", None)
         await query.edit_message_text(
-            "Removal cancelled.",
+            "تم إلغاء الحذف.",
             reply_markup=admin_menu_keyboard(),
         )
     return ConversationHandler.END
@@ -372,5 +375,5 @@ def remove_teacher_conversation() -> ConversationHandler:
             CommandHandler("cancel", cancel_handler),
             CallbackQueryHandler(cancel_handler, pattern=f"^{CB_MAIN_MENU}$"),
         ],
-        per_message=False,
+        per_message=True,
     )

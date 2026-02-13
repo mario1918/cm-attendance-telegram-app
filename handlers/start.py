@@ -21,8 +21,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not teacher:
         await update.message.reply_text(
-            "⛔ You are not registered as a teacher.\n"
-            "Please contact an admin to register your Telegram account."
+            "⛔ أنت غير مسجّل كمعلم.\n"
+            "يرجى التواصل مع المشرف لتسجيل حسابك."
         )
         return
 
@@ -30,7 +30,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_admin = bool(teacher["is_admin"])
 
     await update.message.reply_text(
-        f"Welcome, {teacher['name']}! 👋\n\nChoose an option below:",
+        f"مرحباً، {teacher['name']}! 👋\n\nاختر من الخيارات أدناه:",
         reply_markup=main_menu_keyboard(is_admin),
     )
 
@@ -45,7 +45,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not teacher:
         teacher = await db.get_teacher_by_telegram_id(update.effective_user.id)
         if not teacher:
-            await query.edit_message_text("⛔ You are not registered as a teacher.")
+            await query.edit_message_text("⛔ أنت غير مسجّل كمعلم.")
             return
         context.user_data["teacher"] = teacher
 
@@ -53,19 +53,19 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if data == CB_MAIN_MENU:
         await query.edit_message_text(
-            f"Welcome, {teacher['name']}! 👋\n\nChoose an option below:",
+            f"مرحباً، {teacher['name']}! 👋\n\nاختر من الخيارات أدناه:",
             reply_markup=main_menu_keyboard(is_admin),
         )
     elif data == CB_MANAGE_STUDENTS:
         await query.edit_message_text(
-            "👥 Manage Students\n\nChoose an action:",
+            "👥 إدارة الطلاب\n\nاختر إجراء:",
             reply_markup=manage_students_keyboard(),
         )
     elif data == CB_ADMIN_MENU:
         if not is_admin:
-            await query.edit_message_text("⛔ You don't have admin access.")
+            await query.edit_message_text("⛔ ليس لديك صلاحيات المشرف.")
             return
         await query.edit_message_text(
-            "⚙️ Admin Menu\n\nChoose an action:",
+            "⚙️ قائمة المشرف\n\nاختر إجراء:",
             reply_markup=admin_menu_keyboard(),
         )

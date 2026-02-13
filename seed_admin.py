@@ -42,16 +42,16 @@ def seed_admin(name: str, telegram_id: int):
             (telegram_id, name),
         )
         conn.commit()
-        print(f"Admin teacher '{name}' (Telegram ID: {telegram_id}) registered successfully.")
+        print(f"تم تسجيل المعلم المشرف '{name}' (معرّف تيليجرام: {telegram_id}) بنجاح.")
     except sqlite3.IntegrityError:
-        print(f"A teacher with Telegram ID {telegram_id} already exists.")
+        print(f"المعلم بمعرّف تيليجرام {telegram_id} مسجّل مسبقاً.")
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Seed the first admin teacher.")
-    parser.add_argument("--name", required=True, help="Teacher's name")
-    parser.add_argument("--telegram-id", required=True, type=int, help="Teacher's Telegram user ID")
+    parser = argparse.ArgumentParser(description="تسجيل أول معلم مشرف.")
+    parser.add_argument("--name", required=True, help="اسم المعلم")
+    parser.add_argument("--telegram-id", required=True, type=int, help="معرّف تيليجرام للمعلم")
     args = parser.parse_args()
     seed_admin(args.name, args.telegram_id)

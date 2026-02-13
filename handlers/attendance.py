@@ -15,7 +15,7 @@ async def attendance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     teacher = context.user_data.get("teacher")
     if not teacher:
-        await query.edit_message_text("⛔ Session expired. Please /start again.")
+        await query.edit_message_text("⛔ انتهت الجلسة. يرجى كتابة /start من جديد.")
         return
 
     today = date.today().isoformat()
@@ -24,10 +24,10 @@ async def attendance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     students = await db.get_students_by_teacher(teacher["id"])
     if not students:
         await query.edit_message_text(
-            "You have no students in your class yet.\n"
-            "Use 'Manage Students' to add students first.",
+            "لا يوجد طلاب في صفك بعد.\n"
+            "استخدم 'إدارة الطلاب' لإضافة طلاب أولاً.",
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data=CB_MAIN_MENU)]]
+                [[InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data=CB_MAIN_MENU)]]
             ),
         )
         return
@@ -37,7 +37,7 @@ async def attendance_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = _build_attendance_keyboard(students, present_ids)
     await query.edit_message_text(
-        f"📋 Attendance for {today}\n\nTap a student name to toggle present/absent:",
+        f"📋 الحضور ليوم {today}\n\nاضغط على اسم الطالب لتسجيل حضوره أو غيابه:",
         reply_markup=keyboard,
     )
 
@@ -57,8 +57,8 @@ def _build_attendance_keyboard(
                 )
             ]
         )
-    buttons.append([InlineKeyboardButton("✔️ Done", callback_data=CB_DONE)])
-    buttons.append([InlineKeyboardButton("🔙 Back to Main Menu", callback_data=CB_MAIN_MENU)])
+    buttons.append([InlineKeyboardButton("✔️ تم", callback_data=CB_DONE)])
+    buttons.append([InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data=CB_MAIN_MENU)])
     return InlineKeyboardMarkup(buttons)
 
 
@@ -69,7 +69,7 @@ async def attendance_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     teacher = context.user_data.get("teacher")
     if not teacher:
-        await query.edit_message_text("⛔ Session expired. Please /start again.")
+        await query.edit_message_text("⛔ انتهت الجلسة. يرجى كتابة /start من جديد.")
         return
 
     student_id = int(query.data.replace("toggle_", ""))
@@ -89,7 +89,7 @@ async def attendance_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = _build_attendance_keyboard(students, present_ids)
 
     await query.edit_message_text(
-        f"📋 Attendance for {today}\n\nTap a student name to toggle present/absent:",
+        f"📋 الحضور ليوم {today}\n\nاضغط على اسم الطالب لتسجيل حضوره أو غيابه:",
         reply_markup=keyboard,
     )
 
@@ -101,7 +101,7 @@ async def attendance_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     teacher = context.user_data.get("teacher")
     if not teacher:
-        await query.edit_message_text("⛔ Session expired. Please /start again.")
+        await query.edit_message_text("⛔ انتهت الجلسة. يرجى كتابة /start من جديد.")
         return
 
     today = context.user_data.get("attendance_date", date.today().isoformat())
@@ -111,11 +111,11 @@ async def attendance_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     present_names = [s["name"] for s in students if s["id"] in present_ids]
     absent_names = [s["name"] for s in students if s["id"] not in present_ids]
 
-    summary = f"✅ Attendance saved for {today}\n\n"
-    summary += f"**Present ({len(present_names)}):**\n"
-    summary += "\n".join(f"  • {n}" for n in present_names) if present_names else "  None"
-    summary += f"\n\n**Absent ({len(absent_names)}):**\n"
-    summary += "\n".join(f"  • {n}" for n in absent_names) if absent_names else "  None"
+    summary = f"✅ تم حفظ الحضور ليوم {today}\n\n"
+    summary += f"**الحاضرون ({len(present_names)}):**\n"
+    summary += "\n".join(f"  • {n}" for n in present_names) if present_names else "  لا يوجد"
+    summary += f"\n\n**الغائبون ({len(absent_names)}):**\n"
+    summary += "\n".join(f"  • {n}" for n in absent_names) if absent_names else "  لا يوجد"
 
     is_admin = bool(teacher["is_admin"])
     await query.edit_message_text(

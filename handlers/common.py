@@ -40,12 +40,12 @@ CB_CONFIRM_NO = "no"
 def main_menu_keyboard(is_admin: bool) -> InlineKeyboardMarkup:
     """Build the main menu inline keyboard."""
     buttons = [
-        [InlineKeyboardButton("📋 Take Attendance", callback_data=CB_ATTENDANCE)],
-        [InlineKeyboardButton("👥 Manage Students", callback_data=CB_MANAGE_STUDENTS)],
+        [InlineKeyboardButton("📋 تسجيل الحضور", callback_data=CB_ATTENDANCE)],
+        [InlineKeyboardButton("👥 إدارة الطلاب", callback_data=CB_MANAGE_STUDENTS)],
     ]
     if is_admin:
         buttons.append(
-            [InlineKeyboardButton("⚙️ Admin Menu", callback_data=CB_ADMIN_MENU)]
+            [InlineKeyboardButton("⚙️ قائمة المشرف", callback_data=CB_ADMIN_MENU)]
         )
     return InlineKeyboardMarkup(buttons)
 
@@ -53,11 +53,11 @@ def main_menu_keyboard(is_admin: bool) -> InlineKeyboardMarkup:
 def manage_students_keyboard() -> InlineKeyboardMarkup:
     """Build the manage students sub-menu."""
     buttons = [
-        [InlineKeyboardButton("➕ Add Student", callback_data=CB_ADD_STUDENT)],
-        [InlineKeyboardButton("❌ Remove Student", callback_data=CB_REMOVE_STUDENT)],
-        [InlineKeyboardButton("✏️ Edit Student Name", callback_data=CB_EDIT_STUDENT)],
-        [InlineKeyboardButton("🔄 Move Student", callback_data=CB_MOVE_STUDENT)],
-        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data=CB_MAIN_MENU)],
+        [InlineKeyboardButton("➕ إضافة طالب", callback_data=CB_ADD_STUDENT)],
+        [InlineKeyboardButton("❌ حذف طالب", callback_data=CB_REMOVE_STUDENT)],
+        [InlineKeyboardButton("✏️ تعديل اسم طالب", callback_data=CB_EDIT_STUDENT)],
+        [InlineKeyboardButton("🔄 نقل طالب", callback_data=CB_MOVE_STUDENT)],
+        [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data=CB_MAIN_MENU)],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -65,10 +65,10 @@ def manage_students_keyboard() -> InlineKeyboardMarkup:
 def admin_menu_keyboard() -> InlineKeyboardMarkup:
     """Build the admin menu."""
     buttons = [
-        [InlineKeyboardButton("📊 Download Report", callback_data=CB_DOWNLOAD_REPORT)],
-        [InlineKeyboardButton("➕ Register Teacher", callback_data=CB_REGISTER_TEACHER)],
-        [InlineKeyboardButton("❌ Remove Teacher", callback_data=CB_REMOVE_TEACHER)],
-        [InlineKeyboardButton("🔙 Back to Main Menu", callback_data=CB_MAIN_MENU)],
+        [InlineKeyboardButton("📊 تحميل التقرير", callback_data=CB_DOWNLOAD_REPORT)],
+        [InlineKeyboardButton("➕ تسجيل معلم", callback_data=CB_REGISTER_TEACHER)],
+        [InlineKeyboardButton("❌ حذف معلم", callback_data=CB_REMOVE_TEACHER)],
+        [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data=CB_MAIN_MENU)],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -81,14 +81,14 @@ async def cancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         teacher = context.user_data.get("teacher", {})
         is_admin = teacher.get("is_admin", False)
         await query.edit_message_text(
-            "Action cancelled. Returning to main menu.",
+            "تم الإلغاء. العودة للقائمة الرئيسية.",
             reply_markup=main_menu_keyboard(is_admin),
         )
     else:
         teacher = context.user_data.get("teacher", {})
         is_admin = teacher.get("is_admin", False)
         await update.message.reply_text(
-            "Action cancelled. Returning to main menu.",
+            "تم الإلغاء. العودة للقائمة الرئيسية.",
             reply_markup=main_menu_keyboard(is_admin),
         )
     return ConversationHandler.END

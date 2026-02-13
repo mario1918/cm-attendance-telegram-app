@@ -188,3 +188,23 @@ async def get_attendance_for_month(teacher_id: int, year: int, month: int) -> li
         ) as cursor:
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
+
+
+async def get_attendance_dates_for_month(teacher_id: int, year: int, month: int) -> list[str]:
+    """Return sorted distinct dates (YYYY-MM-DD) where at least one attendance record exists
+    for the given teacher's class in the given month.
+    """
+    month_str = f"{year}-{month:02d}"
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """
+            SELECT DISTINCT a.date
+            FROM attendance a
+            JOIN students s ON a.student_id = s.id
+            WHERE s.teacher_id = ? AND a.date LIKE ?
+            ORDER BY a.date ASC
+            """,
+            (teacher_id, f"{month_str}%"),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
