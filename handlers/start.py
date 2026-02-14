@@ -1,5 +1,6 @@
 """Start command and main menu handler."""
 from telegram import Update
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
 import db
@@ -38,7 +39,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle main menu button presses."""
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except BadRequest:
+        pass
     data = query.data
 
     teacher = context.user_data.get("teacher")
@@ -51,21 +55,24 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     is_admin = bool(teacher["is_admin"])
 
-    if data == CB_MAIN_MENU:
-        await query.edit_message_text(
-            f"مرحباً، {teacher['name']}! 👋\n\nاختر من الخيارات أدناه:",
-            reply_markup=main_menu_keyboard(is_admin),
-        )
-    elif data == CB_MANAGE_STUDENTS:
-        await query.edit_message_text(
-            "👥 إدارة الطلاب\n\nاختر إجراء:",
-            reply_markup=manage_students_keyboard(),
-        )
-    elif data == CB_ADMIN_MENU:
-        if not is_admin:
-            await query.edit_message_text("⛔ ليس لديك صلاحيات المشرف.")
-            return
-        await query.edit_message_text(
-            "⚙️ قائمة المشرف\n\nاختر إجراء:",
-            reply_markup=admin_menu_keyboard(),
-        )
+    try:
+        if data == CB_MAIN_MENU:
+            await query.edit_message_text(
+                f"مرحباً، {teacher['name']}! 👋\n\nاختر من الخيارات أدناه:",
+                reply_markup=main_menu_keyboard(is_admin),
+            )
+        elif data == CB_MANAGE_STUDENTS:
+            await query.edit_message_text(
+                "👥 إدارة الطلاب\n\nاختر إجراء:",
+                reply_markup=manage_students_keyboard(),
+            )
+        elif data == CB_ADMIN_MENU:
+            if not is_admin:
+                await query.edit_message_text("⛔ ليس لديك صلاحيات المشرف.")
+                return
+            await query.edit_message_text(
+                "⚙️ قائمة المشرف\n\nاختر إجراء:",
+                reply_markup=admin_menu_keyboard(),
+            )
+    except BadRequest:
+        pass
