@@ -30,6 +30,7 @@ from handlers.common import (
     cancel_handler,
     main_menu_keyboard,
     manage_students_keyboard,
+    send_and_track,
 )
 
 
@@ -49,17 +50,18 @@ async def add_student_name_received(update: Update, context: ContextTypes.DEFAUL
     """Save the new student."""
     teacher = context.user_data.get("teacher")
     if not teacher:
-        await update.message.reply_text("⛔ انتهت الجلسة. يرجى كتابة /start من جديد.")
+        await send_and_track(update, context, "⛔ انتهت الجلسة. يرجى كتابة /start من جديد.")
         return ConversationHandler.END
 
     name = update.message.text.strip()
     if not name:
-        await update.message.reply_text("الاسم لا يمكن أن يكون فارغاً. اكتب اسماً صحيحاً:")
+        await send_and_track(update, context, "الاسم لا يمكن أن يكون فارغاً. اكتب اسماً صحيحاً:")
         return STATE_WAITING_STUDENT_NAME
 
     await db.add_student(name, teacher["id"])
     is_admin = bool(teacher["is_admin"])
-    await update.message.reply_text(
+    await send_and_track(
+        update, context,
         f"✅ تمت إضافة الطالب '{name}' إلى صفك.",
         reply_markup=manage_students_keyboard(),
     )
@@ -238,16 +240,17 @@ async def edit_student_new_name(update: Update, context: ContextTypes.DEFAULT_TY
     """Save the new name."""
     new_name = update.message.text.strip()
     if not new_name:
-        await update.message.reply_text("الاسم لا يمكن أن يكون فارغاً. اكتب اسماً صحيحاً:")
+        await send_and_track(update, context, "الاسم لا يمكن أن يكون فارغاً. اكتب اسماً صحيحاً:")
         return STATE_WAITING_NEW_NAME
 
     student = context.user_data.pop("pending_edit_student", None)
     if not student:
-        await update.message.reply_text("خطأ: فُقدت بيانات الطالب.", reply_markup=manage_students_keyboard())
+        await send_and_track(update, context, "خطأ: فُقدت بيانات الطالب.", reply_markup=manage_students_keyboard())
         return ConversationHandler.END
 
     await db.update_student_name(student["id"], new_name)
-    await update.message.reply_text(
+    await send_and_track(
+        update, context,
         f"✅ تم تغيير اسم الطالب من '{student['name']}' إلى '{new_name}'.",
         reply_markup=manage_students_keyboard(),
     )

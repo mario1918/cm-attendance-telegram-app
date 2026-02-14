@@ -10,8 +10,10 @@ from handlers.common import (
     CB_MAIN_MENU,
     CB_MANAGE_STUDENTS,
     admin_menu_keyboard,
+    delete_previous_bot_messages,
     main_menu_keyboard,
     manage_students_keyboard,
+    track_bot_message,
 )
 
 
@@ -20,20 +22,32 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_user_id = update.effective_user.id
     teacher = await db.get_teacher_by_telegram_id(telegram_user_id)
 
+    chat_id = update.effective_chat.id
+    await delete_previous_bot_messages(chat_id, context)
+    # Delete the user's /start command message
+    try:
+        await update.message.delete()
+    except BadRequest:
+        pass
+
     if not teacher:
-        await update.message.reply_text(
-            "⛔ أنت غير مسجّل كمعلم.\n"
-            "يرجى التواصل مع المشرف لتسجيل حسابك."
+        msg = await context.bot.send_message(
+            chat_id=chat_id,
+            text="⛔ أنت غير مسجّل كمعلم.\n"
+                 "يرجى التواصل مع المشرف لتسجيل حسابك.",
         )
+        track_bot_message(context, msg.message_id)
         return
 
     context.user_data["teacher"] = teacher
     is_admin = bool(teacher["is_admin"])
 
-    await update.message.reply_text(
-        f"مرحباً، {teacher['name']}! 👋\n\nاختر من الخيارات أدناه:",
+    msg = await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"مرحباً، {teacher['name']}! 👋\n\nاختر من الخيارات أدناه:",
         reply_markup=main_menu_keyboard(is_admin),
     )
+    track_bot_message(context, msg.message_id)
 
 
 async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):

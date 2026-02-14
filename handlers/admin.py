@@ -29,7 +29,10 @@ from handlers.common import (
     STATE_WAITING_TEACHER_NAME,
     admin_menu_keyboard,
     cancel_handler,
+    delete_previous_bot_messages,
     main_menu_keyboard,
+    send_and_track,
+    track_bot_message,
 )
 from report import generate_attendance_report
 
@@ -126,15 +129,17 @@ async def report_month_selected(update: Update, context: ContextTypes.DEFAULT_TY
     teacher = context.user_data.get("teacher")
     is_admin = bool(teacher["is_admin"]) if teacher else False
 
-    await query.message.reply_document(
+    doc_msg = await query.message.reply_document(
         document=buffer,
         filename=filename,
         caption=f"📊 تقرير الحضور لـ {teacher_name} — {month_name} {year}",
     )
-    await query.message.reply_text(
+    track_bot_message(context, doc_msg.message_id)
+    menu_msg = await query.message.reply_text(
         "تم إرسال التقرير! اختر من الخيارات:",
         reply_markup=main_menu_keyboard(is_admin),
     )
+    track_bot_message(context, menu_msg.message_id)
 
     context.user_data.pop("report_teacher_id", None)
     return ConversationHandler.END
@@ -182,14 +187,15 @@ async def register_teacher_name_received(update: Update, context: ContextTypes.D
     """Save name and ask for Telegram user ID."""
     name = update.message.text.strip()
     if not name:
-        await update.message.reply_text("الاسم لا يمكن أن يكون فارغاً. اكتب اسماً صحيحاً:")
+        await send_and_track(update, context, "الاسم لا يمكن أن يكون فارغاً. اكتب اسماً صحيحاً:")
         return STATE_WAITING_TEACHER_NAME
 
     context.user_data["new_teacher_name"] = name
-    await update.message.reply_text(
+    await send_and_track(
+        update, context,
         f"اسم المعلم: {name}\n\n"
         "الآن اكتب معرّف تيليجرام للمعلم (رقم).\n"
-        "يمكن للمعلم معرفة معرّفه بمراسلة @userinfobot على تيليجرام."
+        "يمكن للمعلم معرفة معرّفه بمراسلة @userinfobot على تيليجرام.",
     )
     return STATE_WAITING_TEACHER_ID
 
@@ -200,13 +206,14 @@ async def register_teacher_id_received(update: Update, context: ContextTypes.DEF
     try:
         telegram_id = int(text)
     except ValueError:
-        await update.message.reply_text("يرجى إدخال رقم صحيح لمعرّف تيليجرام:")
+        await send_and_track(update, context, "يرجى إدخال رقم صحيح لمعرّف تيليجرام:")
         return STATE_WAITING_TEACHER_ID
 
     # Check if already registered
     existing = await db.get_teacher_by_telegram_id(telegram_id)
     if existing:
-        await update.message.reply_text(
+        await send_and_track(
+            update, context,
             f"المعلم بمعرّف تيليجرام {telegram_id} مسجّل مسبقاً باسم '{existing['name']}'.",
             reply_markup=admin_menu_keyboard(),
         )
@@ -220,7 +227,8 @@ async def register_teacher_id_received(update: Update, context: ContextTypes.DEF
             InlineKeyboardButton("لا", callback_data="admin_no"),
         ]
     ]
-    await update.message.reply_text(
+    await send_and_track(
+        update, context,
         "هل يجب أن يكون لهذا المعلم صلاحيات مشرف?",
         reply_markup=InlineKeyboardMarkup(buttons),
     )

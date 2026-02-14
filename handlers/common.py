@@ -1,6 +1,11 @@
 """Shared constants, helpers, and cancel handler."""
+import logging
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes, ConversationHandler
+
+logger = logging.getLogger(__name__)
 
 # Callback data prefixes
 CB_ATTENDANCE = "att"
@@ -73,22 +78,58 @@ def admin_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
+async def delete_previous_bot_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Delete all tracked bot messages from the chat."""
+    msg_ids = context.user_data.pop("bot_message_ids", [])
+    for msg_id in msg_ids:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+        except BadRequest:
+            pass
+
+
+def track_bot_message(context: ContextTypes.DEFAULT_TYPE, message_id: int) -> None:
+    """Add a bot message ID to the tracking list."""
+    ids = context.user_data.setdefault("bot_message_ids", [])
+    ids.append(message_id)
+
+
+async def send_and_track(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, **kwargs):
+    """Delete previous bot messages, delete the user's message, send a new reply_text, and track it."""
+    chat_id = update.effective_chat.id
+    await delete_previous_bot_messages(chat_id, context)
+    # Delete the user's message to keep the chat clean
+    try:
+        await update.message.delete()
+    except BadRequest:
+        pass
+    msg = await context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
+    track_bot_message(context, msg.message_id)
+    return msg
+
+
 async def cancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel any conversation and return to main menu."""
     query = update.callback_query
+    teacher = context.user_data.get("teacher", {})
+    is_admin = teacher.get("is_admin", False)
     if query:
         await query.answer()
-        teacher = context.user_data.get("teacher", {})
-        is_admin = teacher.get("is_admin", False)
         await query.edit_message_text(
             "تم الإلغاء. العودة للقائمة الرئيسية.",
             reply_markup=main_menu_keyboard(is_admin),
         )
     else:
-        teacher = context.user_data.get("teacher", {})
-        is_admin = teacher.get("is_admin", False)
-        await update.message.reply_text(
-            "تم الإلغاء. العودة للقائمة الرئيسية.",
+        chat_id = update.effective_chat.id
+        await delete_previous_bot_messages(chat_id, context)
+        try:
+            await update.message.delete()
+        except BadRequest:
+            pass
+        msg = await context.bot.send_message(
+            chat_id=chat_id,
+            text="تم الإلغاء. العودة للقائمة الرئيسية.",
             reply_markup=main_menu_keyboard(is_admin),
         )
+        track_bot_message(context, msg.message_id)
     return ConversationHandler.END
